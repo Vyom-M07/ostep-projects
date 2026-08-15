@@ -20,17 +20,25 @@ int main(int argc, char* argv[]) {
   size_t len = 0;
   ssize_t nread;
   char* keyword = argv[1];
-  // printf("keyword: %s\n", keyword);
-  for (int i = 1; i < argc - 1; i++) {
-    FILE* fp = fopen(argv[i + 1], "r");
-    if (fp == NULL) {
-      printf("wgrep: cannot open file\n");
-      exit(1);
+  if (isatty(0)) {
+    for (int i = 1; i < argc - 1; i++) {
+      FILE* fp = fopen(argv[i + 1], "r");
+      if (fp == NULL) {
+        printf("wgrep: cannot open file\n");
+        exit(1);
+      }
+      while (((nread = getline(&line, &len, fp)) != -1)) {
+        // printf("readline: %s\n", line);
+        // line contains the line read from the
+        // file now we have to find the keyword within this line (.contains()
+        // type vibe)
+        if (strstr(line, keyword) != NULL) {
+          printf("%s", line);
+        }
+      }
     }
-    while ((nread = getline(&line, &len, fp)) != -1) {
-      // printf("readline: %s\n", line); line contains the line read from the
-      // file now we have to find the keyword within this line (.contains() type
-      // vibe)
+  } else {
+    while ((nread = getline(&line, &len, stdin)) != -1) {
       if (strstr(line, keyword) != NULL) {
         printf("%s", line);
       }
