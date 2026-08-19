@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
-#define BIT_SHIFTER 8
 
 int main(int argc, char* argv[]) {
   if (argc == 1) {
@@ -13,41 +11,53 @@ int main(int argc, char* argv[]) {
 
   // 1. read from a file
   // 2. grab each line of the file and use RLE zip algorithm to
-  FILE* fp;
   //   size_t size;
-  unsigned char buffer[5];
   // this will be for reading lines from the initial textfile
   char* line = NULL;
   size_t len = 0;
   ssize_t nread;
-  for (int i = 0; i < argc - 1; i++) {
-    fp = fopen(argv[i + 1], "r");
-    if (!fp) {
+
+  uint32_t repeats = 0;
+  char current_char = -1;
+  // printf("argc value: %d\n", argc);
+  for (int i = i; i < argc; i++) {
+    // printf("CL argument: %s\n", argv[i + 1]);
+    FILE* fp = fopen(argv[i], "r");
+    if (fp == NULL) {
       printf("wzip: cannot open file \n");
       exit(1);
     }
     while (((nread = getline(&line, &len, fp)) != -1)) {
-      uint32_t repeats = 1;
-      // this will grab the char, and before the position of the pointe updates
-      // will keep the last repeated char
+      for (int j = 0; j < nread; j++) {
+        if (current_char == -1) {
+          // first character of the file
+          current_char = line[j];
+        } else if (current_char == line[j]) {
+          // running sequence of repeat characters
+          repeats++;
+        } else {
+          // enter else statement when change in letter detected
 
-      //   printf("*line before if statement: %c\n", *line);
-      while (*line == *(line + 1)) {
-        repeats++;
-        line++;
-        // printf("*line after if statement: %c\n", *line);
+          // write the 'repeats' in binary
+          fwrite(&repeats, sizeof(uint32_t), 1, stdout);
+          // writes the letter we are repeating (e.g., 'a')
+          fputc(current_char, stdout);
+
+          current_char = line[j];
+          repeats = 1;
+        }
       }
-      // for loop here to fill the buffer
-      for (int i = 0; i < 4; i++) {
-        buffer[i] = (repeats & (0xFF << (i * BIT_SHIFTER)));
-        // printf("buffer at index %d: %x\n", i, buffer[i]);
-      }
-      buffer[4] = *line;
-      fwrite(buffer, sizeof(*buffer), ARRAY_SIZE(buffer), stdout);
-      repeats = 1;
-      line++;
     }
-  }
+    fclose(fp);
 
-  return 0;
-}
+    // final if-statement for last sequence of repeats
+    // (since last seq will never detect a change in letter)
+    if (current_char != -1) {
+      fwrite(&repeats, sizeof(uint32_t), 1, stdout);
+      fputc(current_char, stdout);
+    }
+
+    free(line);
+
+    return 0;
+  }
